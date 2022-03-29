@@ -1,0 +1,308 @@
+buildscript {
+    ext {
+        artifactoryUser = "builder"
+        artifactoryPass = "PA44SHVL5aBiLHpvKavnRLhEkd5hsaU"
+
+        if (System.env.CIRCLE_BUILD_NUM) {
+          artifactoryUser = "publisher"
+          artifactoryPass = System.env.REPO_PUBLISH_PASSWORD
+        }
+    }
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+        maven {
+            name "artifactoryReleases"
+            url "https://artifactory.angieslist.com/artifactory/releases"
+            credentials {
+                username artifactoryUser
+                password artifactoryPass
+            }
+        }
+        maven {
+            name "artifactorySnapshots"
+            url "https://artifactory.angieslist.com/artifactory/snapshots"
+            credentials {
+                username artifactoryUser
+                password artifactoryPass
+            }
+        }
+        maven {
+            name "artifactory3rdParty"
+            url "https://artifactory.angieslist.com/artifactory/thirdparty"
+            credentials {
+                username artifactoryUser
+                password artifactoryPass
+            }
+        }
+    }
+
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:1.4.0.RELEASE")
+        classpath("org.kordamp.gradle:stats-gradle-plugin:0.2.0")
+        classpath("org.jsonschema2pojo:jsonschema2pojo-core:0.4.26")
+        classpath("com.angieslist:openapi-plugin:1.0.+")
+    }
+}
+
+plugins {
+    //id "com.gorylenko.gradle-git-properties" version "1.4.17"
+}
+
+apply plugin: "java"
+apply plugin: "maven"
+apply plugin: "idea"
+apply plugin: "spring-boot"
+apply plugin: "findbugs"
+apply plugin: "checkstyle"
+apply plugin: "pmd"
+apply plugin: "jacoco"
+apply plugin: "org.kordamp.gradle.stats"
+apply plugin: "com.angieslist.gradle.openapi"
+
+ext {
+    newrelicVersion = "3.41.0"
+
+    buildNumber = 0
+    branchName = ""
+
+    if (System.env.CIRCLE_BUILD_NUM) {
+        buildNumber = System.env.CIRCLE_BUILD_NUM
+    }
+
+    if (System.env.CIRCLE_BRANCH && System.env.CIRCLE_BRANCH != "master") {
+        branchName = "${System.env.CIRCLE_BRANCH}-"
+        buildNumber = "${buildNumber}-SNAPSHOT"
+    }
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    jcenter()
+    maven {
+        name "artifactoryReleases"
+        url "https://artifactory.angieslist.com/artifactory/releases"
+        credentials {
+            username artifactoryUser
+            password artifactoryPass
+        }
+    }
+    maven {
+        name "artifactorySnapshots"
+        url "https://artifactory.angieslist.com/artifactory/snapshots"
+        credentials {
+            username artifactoryUser
+            password artifactoryPass
+        }
+    }
+    maven {
+        name "artifactory3rdParty"
+        url "https://artifactory.angieslist.com/artifactory/thirdparty"
+        credentials {
+            username artifactoryUser
+            password artifactoryPass
+        }
+    }
+}
+
+jar {
+    baseName = "openapi"
+    version =  "${branchName}1.0.${buildNumber}"
+    from sourceSets.main.allSource
+}
+
+bootRun {
+    String activeProfile = System.properties["spring.profiles.active"]
+    String confLoc = System.properties["spring.config.location"]
+    systemProperty "spring.profiles.active", activeProfile
+    systemProperty "spring.config.location", "file:$confLoc"
+
+    // By default newrelic is disabled.  To enable, use these system properties.
+    String newrelicEnabled = System.properties["newrelic.config.agent_enabled"]
+    String newrelicName = System.properties["newrelic.config.app_name"]
+    systemProperty "newrelic.config.agent_enabled", newrelicEnabled
+    systemProperty "newrelic.config.app_name", newrelicName
+}
+
+pmd {
+    ignoreFailures = true
+    ruleSets = [
+            "java-basic",
+            "java-braces",
+            "java-clone",
+            "java-codesize",
+            "java-comments",
+            "java-coupling",
+            "java-design",
+            "java-empty",
+            "java-finalizers",
+            "java-imports",
+            "java-javabeans",
+            "java-junit",
+            "java-migrating",
+            "java-naming",
+            "java-optimizations",
+            "java-strictexception",
+            "java-strings",
+            "java-sunsecure",
+            "java-typeresolution",
+            "java-unnecessary",
+            "java-unusedcode"
+    ]
+}
+
+checkstyle {
+    toolVersion = "6.10.1"
+    ignoreFailures = true
+}
+
+findbugs {
+    toolVersion = "3.0.1"
+    ignoreFailures = true
+    effort = "max"
+}
+
+tasks.withType(FindBugs) {
+    reports {
+        xml.enabled false
+        html.enabled true
+    }
+}
+
+configurations {
+    newrelic
+}
+
+dependencies {
+    newrelic("com.newrelic.agent.java:newrelic-agent:${newrelicVersion}")
+
+    compile("com.angieslist:java-common:3.0.+") { changing = true }
+    compile("org.springframework.cloud:spring-cloud-starter-hystrix:1.1.5.RELEASE")
+    compile("org.springframework.cloud:spring-cloud-starter-hystrix-dashboard:1.1.5.RELEASE")
+    compile("org.apache.commons:commons-pool2:2.4.2")
+    compile("io.springfox:springfox-swagger-ui:2.5.0")
+    compile("redis.clients:jedis:2.9.0")
+    compile("org.apache.kafka:kafka-clients:0.8.2.2") // Needs to be specified to override Spring 0.9 default
+    compile("org.zalando:logbook-spring-boot-starter:0.14.0") // https://github.com/zalando/logbook for configuration
+    compile("net.logstash.logback:logstash-logback-encoder:4.7")
+
+    testCompile("junit:junit:4.12")
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+compileJava {
+    options.compilerArgs << "-Xlint:all"
+    options.compilerArgs << "-Xlint:-processing"
+    options.compilerArgs << "-Xlint:-unchecked"
+    options.compilerArgs << "-Werror"
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = "3.1"
+}
+
+task copyAgent(type: Copy) {
+    from configurations.newrelic
+    into "$buildDir/newrelic"
+    rename("newrelic-agent-${newrelicVersion}.jar", "newrelic.jar")
+
+    from "config/newrelic.yml"
+    into "$buildDir/newrelic"
+}
+
+
+springBoot {
+    mainClass = "com.angieslist.openapi.Application"
+    agent = file("$buildDir/newrelic/newrelic.jar")
+    backupSource = false
+
+    buildInfo {
+        additionalProperties = [
+                "version" : buildNumber
+        ]
+    }
+}
+
+task copyArtifacts << {
+    if (System.env.CIRCLECI == "true") {
+        // Copy all files
+        copy {
+            from(file("$buildDir/libs/").listFiles())
+            into System.env.CIRCLE_ARTIFACTS
+        }
+
+        // Copy just executable to known name for execution
+        copy {
+            from file("$buildDir/libs/${jar.baseName}-${jar.version}.jar")
+            into System.env.CIRCLE_ARTIFACTS
+            rename "${jar.baseName}-${jar.version}.jar", "${jar.baseName}.jar"
+        }
+
+        // Don't forget NewRelic!
+        copy {
+            from(file("$buildDir/newrelic/").listFiles())
+            into System.env.CIRCLE_ARTIFACTS
+        }
+    }
+}
+
+task zipArtifacts(type:Zip) {
+    if (System.env.CIRCLECI == "true") {
+        from System.env.CIRCLE_ARTIFACTS
+        include "*.jar"
+        include "*.yml"
+        exclude "${jar.baseName}-${jar.version}.jar"
+        into "/" // note that this specifies path *in* the archive
+        baseName "${jar.baseName}-1.0" // deployment process requires this to be 1.0
+        destinationDir file(System.env.CIRCLE_ARTIFACTS)
+    }
+}
+
+task zipDocker(type:Zip) {
+    if (System.env.CIRCLECI == "true") {
+        from "$projectDir/Docker"
+        into "Docker" // note that this specifies path *in* the archive
+        baseName "${jar.baseName}-docker"
+        destinationDir file(System.env.CIRCLE_ARTIFACTS)
+    }
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+        pom.artifactId = "${jar.baseName}"
+        pom.groupId = "com.angieslist"
+        pom.version = jar.version
+
+            repository(url: "https://artifactory.angieslist.com/artifactory/releases") {
+                authentication(userName: artifactoryUser, password: artifactoryPass);
+            }
+            snapshotRepository(url: "https://artifactory.angieslist.com/artifactory/snapshots") {
+                authentication(userName: artifactoryUser, password: artifactoryPass);
+            }
+        }
+    }
+}
+
+openapi {
+    cleanOutputDir true
+    lang 'com.angieslist.gradle.openapi.CustomJavaClientGenerator'
+    outputDir projectDir.absolutePath
+    additionalProperties = [
+            'dateLibrary'      : 'java8',
+            'sortParamsByRequiredFlag': 'true'
+    ]
+    systemProperties = [
+            'apis' : '',
+            'models' : ''
+    ]
+    spec('http://address-stagenfr.angieslist.com/api-docs/swagger', 'com.angieslist.remote.address', 'address.url')
+    spec('http://user-stagenfr.angieslist.com/api-docs/swagger', 'com.angieslist.remote.user', 'user.url')
+}
+
+project.tasks.bootRun.dependsOn([copyAgent])
+project.tasks.assemble.dependsOn([copyAgent])

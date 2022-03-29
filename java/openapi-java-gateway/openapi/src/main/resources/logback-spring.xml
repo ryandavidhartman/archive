@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <fieldNames>
+                <timestamp>date</timestamp>
+                <message>message</message>
+                <thread>thread</thread>
+                <!-- This does not seem correct; it is mapping text into a numeric field, but the logs don't show up in Kibana otherwise.
+                They do, however, have two level fields, one textual and the other numeric, which makes it so level can't be used in searches. -->
+                <levelValue>level</levelValue>
+                <logger>logger</logger>
+                <version>[ignore]</version>
+            </fieldNames>
+            <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                <maxDepthPerThrowable>30</maxDepthPerThrowable>
+                <maxLength>2048</maxLength>
+                <shortenedClassNameLength>20</shortenedClassNameLength>
+                <rootCauseFirst>true</rootCauseFirst>
+            </throwableConverter>
+        </encoder>
+    </appender>
+
+    <springProfile name="local">
+        <include resource="org/springframework/boot/logging/logback/base.xml" />
+
+        <logger name="com.angieslist" level="TRACE" />
+        <logger name="org.zalando.logbook.Logbook" level="TRACE" /> <!-- Displays HTTP request/response -->
+        <logger name="com.netflix.hystrix.AbstractCommand" level="DEBUG" />
+    </springProfile>
+
+    <springProfile name="!local">
+        <property name="FILE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} ${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%t] %-40.40logger{39} : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+
+        <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+        <include resource="org/springframework/boot/logging/logback/file-appender.xml" />
+
+        <root level="INFO">
+            <appender-ref ref="JSON" />
+            <appender-ref ref="FILE" />
+        </root>
+
+        <logger name="com.angieslist" level="DEBUG" />
+    </springProfile>
+</configuration>

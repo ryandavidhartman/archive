@@ -1,0 +1,23 @@
+#!/bin/bash
+sleep 2
+
+if [[ ${NEWRELIC_ENABLED} == "true" ]]
+then
+  newrelic_opts="-javaagent:${HOME}/newrelic.jar \
+  -Dnewrelic.config.agent_enabled=true \
+  -Dnewrelic.config.file=${HOME}/newrelic.yml \
+  -Dnewrelic.config.app_name=${APPLICATION_NAME}-${ENVIRONMENT}"
+else
+  newrelic_opts=""
+fi
+
+java ${JVM_XMS} \
+  ${JVM_XMX} \
+  ${JVM_DCU} \
+  ${JVM_HEAP_PGS} \
+  ${JVM_PROFILE} \
+  ${JVM_GC} \
+  ${JVM_DNS_CACHE} \
+  -Dlogging.file=${HOME}/{APPLICATION_NAME}-${APPLICATION_MODE}.log \
+  ${newrelic_opts} \
+  -jar ${HOME}/${APPLICATION_NAME}.jar

@@ -1,0 +1,65 @@
+applications:
+- disk: <%= stackato_disk %>
+  memory: <%= stackato_memory %>
+  name: <%= application_name %>
+  instances: "<%= stackato_num_instances %>"
+  path: .
+  java: 8u111
+  stackato:
+    drain:
+      appdrain:
+        url: <%= logspout_url %>
+        json: true
+    autoscale:
+      enabled: <%= stackato_autoscale_enabled %>
+      instances:
+        min: "<%= stackato_min_instances %>"
+        max: "<%= stackato_max_instances %>"
+      cpu:
+        min: "<%= stackato_min_cpu %>"
+        max: "<%= stackato_max_cpu %>"
+  env:
+    APPLICATION_MODE:
+      default: "<%= application_mode %>"
+    APPLICATION_NAME:
+      default: "<%= application_name %>"
+    APPLY_EVOLUTIONS:
+      default: "<%= apply_evolutions %>"
+    AWS_ACCESS_KEY_ID:
+      default: "<%= aws_access_key_id %>"
+    AWS_SECRET_ACCESS_KEY:
+      default: "<%= aws_secret_access_key %>"
+    CONSUL_HOST:
+      default: "<%= consul_host %>"
+    ENVIRONMENT:
+      default: "<%= environment %>"
+    JVM_DCU:
+      default: "<%= jvm_dcu %>"
+    JVM_DNS_CACHE:
+      default: "<%= jvm_dns_cache %>"
+    JVM_GC:
+      default: "<%= jvm_gc %>"
+    JVM_HEAP_PGS:
+      default: "<%= jvm_heap_pgs %>"
+    JVM_PROFILE:
+      default: "<%= jvm_profile %>"
+    JVM_XMS:
+      default: "<%= jvm_xms %>"
+    JVM_XMX:
+      default: "<%= jvm_xmx %>"
+    KAFKA_HOSTS:
+      default: "<%= kafka_hosts %>"
+    MYSQL_DEFAULT_PASSWORD:
+      default: "<%= mysql_default_password %>"
+    MYSQL_DEFAULT_URL:
+      default: "<%= mysql_default_url %>"
+    MYSQL_DEFAULT_USER:
+      default: "<%= mysql_default_user %>"
+    NEWRELIC_ENABLED:
+      default: "<%= newrelic_enabled %>"
+    STATSD_HOST:
+      default: "<%= statsd_host %>"
+    TOOLSET_HOST:
+      default: "<%= toolset_host %>"
+    ZOOKEEPER_HOSTS:
+      default: "<%= zookeeper_hosts %>"
